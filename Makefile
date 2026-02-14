@@ -100,6 +100,9 @@ fclean: clean
 
 re: fclean all
 
+test: all
+	@bash tests/run_tests.sh
+
 -include $(DEPS)
 
-.PHONY: all clean fclean re
+.PHONY: all clean fclean re test
