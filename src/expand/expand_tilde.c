@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   init.c                                             :+:      :+:    :+:   */
+/*   expand_tilde.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: 42sh                                       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -12,33 +12,33 @@
 
 #include "shell.h"
 
-t_shell *shell_init(char **envp) {
-  t_shell *shell;
+char *expand_tilde(const char *word, t_shell *shell) {
+  char *home;
 
-  shell = ft_calloc(1, sizeof(t_shell));
-  if (!shell)
-    return (NULL);
-  shell->env = env_copy(envp);
-  if (!shell->env) {
-    free(shell);
-    return (NULL);
+  if (!word || word[0] != '~')
+    return (ft_strdup(word));
+  if (word[1] == '\0' || word[1] == '/') {
+    home = var_get(shell, "HOME");
+    if (!home)
+      return (ft_strdup(word));
+    if (word[1] == '/')
+      return (ft_strjoin(home, word + 1));
+    return (ft_strdup(home));
   }
-  shell->vars = NULL;
-  shell->aliases = NULL;
-  shell->jobs = NULL;
-  shell->job_count = 0;
-  shell->exit_code = 0;
-  shell->running = 1;
-  return (shell);
+  return (ft_strdup(word));
 }
 
-void shell_destroy(t_shell *shell) {
-  if (!shell)
+void expand_tilde_argv(t_node *node, t_shell *shell) {
+  int i;
+  char *expanded;
+
+  if (!node || !node->argv)
     return;
-  env_free(shell->env);
-  var_list_free(shell->vars);
-  alias_list_free(shell->aliases);
-  job_list_free(shell->jobs);
-  rl_clear_history();
-  free(shell);
+  i = 0;
+  while (node->argv[i]) {
+    expanded = expand_tilde(node->argv[i], shell);
+    free(node->argv[i]);
+    node->argv[i] = expanded;
+    i++;
+  }
 }

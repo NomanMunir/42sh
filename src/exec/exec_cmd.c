@@ -83,6 +83,22 @@ static int is_assignment(const char *s) {
   return (s[i] == '=');
 }
 
+static void run_expansions(t_node *node, t_shell *shell) {
+  int i;
+  char *tmp;
+
+  expand_tilde_argv(node, shell);
+  i = 0;
+  while (node->argv[i]) {
+    tmp = expand_cmd_substitutions(node->argv[i], shell);
+    free(node->argv[i]);
+    node->argv[i] = tmp;
+    i++;
+  }
+  expand_argv(node, shell);
+  expand_glob_argv(node);
+}
+
 int execute_simple_cmd(t_node *node, t_shell *shell) {
   int builtin_ret;
 
@@ -93,7 +109,7 @@ int execute_simple_cmd(t_node *node, t_shell *shell) {
   }
   if (is_assignment(node->argv[0]) && !node->argv[1])
     return (handle_assignment(node, shell));
-  expand_argv(node, shell);
+  run_expansions(node, shell);
   builtin_ret = run_builtin(node->argv, shell);
   if (builtin_ret != -1)
     return (builtin_ret);

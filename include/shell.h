@@ -42,6 +42,13 @@ typedef struct s_var {
   struct s_var *next;
 } t_var;
 
+/* ---- Alias ---- */
+typedef struct s_alias {
+  char *name;
+  char *value;
+  struct s_alias *next;
+} t_alias;
+
 /* ---- Job status ---- */
 typedef enum e_job_status { JOB_RUNNING, JOB_STOPPED, JOB_DONE } t_job_status;
 
@@ -58,6 +65,7 @@ typedef struct s_job {
 typedef struct s_shell {
   char **env;
   t_var *vars;
+  t_alias *aliases;
   t_job *jobs;
   int job_count;
   int exit_code;
@@ -80,6 +88,10 @@ void free_str_arr(char **arr);
 /* ---- signals.c ---- */
 void setup_signals(void);
 
+/* ---- utils.c ---- */
+char **ft_realloc_arr(char **arr, int old_count, int new_cap);
+void process_input(const char *line, t_shell *shell);
+
 /* ---- vars/vars.c ---- */
 t_var *var_find(t_var *vars, const char *name);
 void var_set(t_shell *shell, const char *name, const char *value);
@@ -90,6 +102,17 @@ void var_list_free(t_var *vars);
 /* ---- expand/expand.c ---- */
 char *expand_variables(const char *word, t_shell *shell);
 void expand_argv(t_node *node, t_shell *shell);
+
+/* ---- expand/expand_tilde.c ---- */
+char *expand_tilde(const char *word, t_shell *shell);
+void expand_tilde_argv(t_node *node, t_shell *shell);
+
+/* ---- expand/expand_cmd.c ---- */
+char *expand_command_sub(const char *cmd, t_shell *shell);
+char *expand_cmd_substitutions(const char *word, t_shell *shell);
+
+/* ---- expand/expand_glob.c ---- */
+void expand_glob_argv(t_node *node);
 
 /* ---- exec/executor.c ---- */
 int execute_ast(t_node *node, t_shell *shell);
@@ -120,6 +143,19 @@ int builtin_set(char **argv, t_shell *shell);
 int builtin_jobs(char **argv, t_shell *shell);
 int builtin_fg(char **argv, t_shell *shell);
 int builtin_bg(char **argv, t_shell *shell);
+int builtin_test(char **argv, t_shell *shell);
+int builtin_alias(char **argv, t_shell *shell);
+int builtin_unalias(char **argv, t_shell *shell);
+int builtin_fc(char **argv, t_shell *shell);
+
+/* ---- builtins/alias.c ---- */
+void alias_set(t_shell *shell, const char *name, const char *value);
+void alias_remove(t_shell *shell, const char *name);
+char *alias_expand(const char *input, t_shell *shell);
+void alias_list_free(t_alias *aliases);
+
+/* ---- builtins/history.c ---- */
+char *expand_history(const char *input);
 
 /* ---- jobs/jobs.c ---- */
 void job_add(t_shell *shell, pid_t pid, const char *cmd);

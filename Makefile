@@ -35,11 +35,15 @@ SRC_FILES	= main.c \
 			  init.c \
 			  env.c \
 			  signals.c \
+			  utils.c \
 			  lexer/lexer.c \
 			  lexer/lexer_utils.c \
 			  parser/parser.c \
 			  parser/parser_utils.c \
 			  expand/expand.c \
+			  expand/expand_tilde.c \
+			  expand/expand_cmd.c \
+			  expand/expand_glob.c \
 			  exec/executor.c \
 			  exec/exec_cmd.c \
 			  exec/exec_pipe.c \
@@ -56,6 +60,9 @@ SRC_FILES	= main.c \
 			  builtins/builtin_jobs.c \
 			  builtins/builtin_fg.c \
 			  builtins/builtin_bg.c \
+			  builtins/builtin_test.c \
+			  builtins/alias.c \
+			  builtins/history.c \
 			  vars/vars.c \
 			  jobs/jobs.c
 

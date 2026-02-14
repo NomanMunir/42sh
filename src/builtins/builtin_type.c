@@ -13,9 +13,9 @@
 #include "shell.h"
 
 static int is_builtin_name(const char *name) {
-  static const char *builtins[] = {"cd",     "echo",  "exit", "type",
-                                   "export", "unset", "set",  "jobs",
-                                   "fg",     "bg",    NULL};
+  static const char *builtins[] = {
+      "cd", "echo", "exit", "type", "export", "unset",   "set", "jobs",
+      "fg", "bg",   "test", "[",    "alias",  "unalias", "fc",  NULL};
   int i;
 
   i = 0;

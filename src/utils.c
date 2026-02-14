@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   init.c                                             :+:      :+:    :+:   */
+/*   utils.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: 42sh                                       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -12,33 +12,33 @@
 
 #include "shell.h"
 
-t_shell *shell_init(char **envp) {
-  t_shell *shell;
+char **ft_realloc_arr(char **arr, int old_count, int new_cap) {
+  char **new_arr;
+  int i;
 
-  shell = ft_calloc(1, sizeof(t_shell));
-  if (!shell)
-    return (NULL);
-  shell->env = env_copy(envp);
-  if (!shell->env) {
-    free(shell);
-    return (NULL);
+  new_arr = ft_calloc(new_cap + 1, sizeof(char *));
+  if (!new_arr)
+    return (arr);
+  i = 0;
+  while (i < old_count && arr[i]) {
+    new_arr[i] = arr[i];
+    i++;
   }
-  shell->vars = NULL;
-  shell->aliases = NULL;
-  shell->jobs = NULL;
-  shell->job_count = 0;
-  shell->exit_code = 0;
-  shell->running = 1;
-  return (shell);
+  free(arr);
+  return (new_arr);
 }
 
-void shell_destroy(t_shell *shell) {
-  if (!shell)
+void process_input(const char *line, t_shell *shell) {
+  t_token *tokens;
+  t_node *ast;
+
+  tokens = lexer(line);
+  if (!tokens)
     return;
-  env_free(shell->env);
-  var_list_free(shell->vars);
-  alias_list_free(shell->aliases);
-  job_list_free(shell->jobs);
-  rl_clear_history();
-  free(shell);
+  ast = parse(tokens);
+  if (ast) {
+    shell->exit_code = execute_ast(ast, shell);
+    node_free(ast);
+  }
+  token_list_free(tokens);
 }

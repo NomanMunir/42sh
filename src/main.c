@@ -12,23 +12,21 @@
 
 #include "shell.h"
 
-static void process_line(const char *line, t_shell *shell) {
-  t_token *tokens;
-  t_node *ast;
+static char *preprocess_line(const char *line, t_shell *shell) {
+  char *expanded;
+  char *alias_line;
 
-  tokens = lexer(line);
-  if (!tokens)
-    return;
-  ast = parse(tokens);
-  if (ast) {
-    shell->exit_code = execute_ast(ast, shell);
-    node_free(ast);
-  }
-  token_list_free(tokens);
+  expanded = expand_history(line);
+  if (!expanded)
+    return (NULL);
+  alias_line = alias_expand(expanded, shell);
+  free(expanded);
+  return (alias_line);
 }
 
 static void shell_loop(t_shell *shell) {
   char *line;
+  char *processed;
 
   while (shell->running) {
     job_update_status(shell);
@@ -39,7 +37,11 @@ static void shell_loop(t_shell *shell) {
     }
     if (*line) {
       add_history(line);
-      process_line(line, shell);
+      processed = preprocess_line(line, shell);
+      if (processed) {
+        process_input(processed, shell);
+        free(processed);
+      }
     }
     free(line);
   }
