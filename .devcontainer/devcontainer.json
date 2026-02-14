@@ -1,0 +1,17 @@
+{
+	"name": "42sh",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"terminal.integrated.defaultProfile.linux": "bash"
+			},
+			"extensions": [
+				"ms-vscode.cpptools"
+			]
+		}
+	},
+	"remoteUser": "vscode"
+}
