@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   init.c                                             :+:      :+:    :+:   */
+/*   builtin_set.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: 42sh                                       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -12,31 +12,16 @@
 
 #include "shell.h"
 
-t_shell *shell_init(char **envp) {
-  t_shell *shell;
+int builtin_set(char **argv, t_shell *shell) {
+  t_var *cur;
 
-  shell = ft_calloc(1, sizeof(t_shell));
-  if (!shell)
-    return (NULL);
-  shell->env = env_copy(envp);
-  if (!shell->env) {
-    free(shell);
-    return (NULL);
+  (void)argv;
+  cur = shell->vars;
+  while (cur) {
+    ft_putstr_fd(cur->name, 1);
+    ft_putchar_fd('=', 1);
+    ft_putendl_fd(cur->value, 1);
+    cur = cur->next;
   }
-  shell->vars = NULL;
-  shell->jobs = NULL;
-  shell->job_count = 0;
-  shell->exit_code = 0;
-  shell->running = 1;
-  return (shell);
-}
-
-void shell_destroy(t_shell *shell) {
-  if (!shell)
-    return;
-  env_free(shell->env);
-  var_list_free(shell->vars);
-  job_list_free(shell->jobs);
-  rl_clear_history();
-  free(shell);
+  return (0);
 }

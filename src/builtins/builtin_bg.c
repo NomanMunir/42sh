@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   init.c                                             :+:      :+:    :+:   */
+/*   builtin_bg.c                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: 42sh                                       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -12,31 +12,37 @@
 
 #include "shell.h"
 
-t_shell *shell_init(char **envp) {
-  t_shell *shell;
+int builtin_bg(char **argv, t_shell *shell) {
+  t_job *cur;
+  int id;
 
-  shell = ft_calloc(1, sizeof(t_shell));
-  if (!shell)
-    return (NULL);
-  shell->env = env_copy(envp);
-  if (!shell->env) {
-    free(shell);
-    return (NULL);
+  if (argv[1])
+    id = ft_atoi(argv[1]);
+  else {
+    cur = shell->jobs;
+    if (!cur) {
+      ft_putendl_fd("42sh: bg: no current job", 2);
+      return (1);
+    }
+    while (cur->next)
+      cur = cur->next;
+    id = cur->id;
   }
-  shell->vars = NULL;
-  shell->jobs = NULL;
-  shell->job_count = 0;
-  shell->exit_code = 0;
-  shell->running = 1;
-  return (shell);
-}
-
-void shell_destroy(t_shell *shell) {
-  if (!shell)
-    return;
-  env_free(shell->env);
-  var_list_free(shell->vars);
-  job_list_free(shell->jobs);
-  rl_clear_history();
-  free(shell);
+  cur = shell->jobs;
+  while (cur) {
+    if (cur->id == id) {
+      if (cur->status == JOB_STOPPED) {
+        kill(cur->pid, SIGCONT);
+        cur->status = JOB_RUNNING;
+      }
+      ft_putstr_fd("[", 1);
+      ft_putnbr_fd(cur->id, 1);
+      ft_putstr_fd("]  ", 1);
+      ft_putendl_fd(cur->cmd, 1);
+      return (0);
+    }
+    cur = cur->next;
+  }
+  ft_putendl_fd("42sh: bg: no such job", 2);
+  return (1);
 }

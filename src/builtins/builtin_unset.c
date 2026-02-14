@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   init.c                                             :+:      :+:    :+:   */
+/*   builtin_unset.c                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: 42sh                                       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -12,31 +12,14 @@
 
 #include "shell.h"
 
-t_shell *shell_init(char **envp) {
-  t_shell *shell;
+int builtin_unset(char **argv, t_shell *shell) {
+  int i;
 
-  shell = ft_calloc(1, sizeof(t_shell));
-  if (!shell)
-    return (NULL);
-  shell->env = env_copy(envp);
-  if (!shell->env) {
-    free(shell);
-    return (NULL);
+  i = 1;
+  while (argv[i]) {
+    var_unset(shell, argv[i]);
+    env_unset(shell, argv[i]);
+    i++;
   }
-  shell->vars = NULL;
-  shell->jobs = NULL;
-  shell->job_count = 0;
-  shell->exit_code = 0;
-  shell->running = 1;
-  return (shell);
-}
-
-void shell_destroy(t_shell *shell) {
-  if (!shell)
-    return;
-  env_free(shell->env);
-  var_list_free(shell->vars);
-  job_list_free(shell->jobs);
-  rl_clear_history();
-  free(shell);
+  return (0);
 }

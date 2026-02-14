@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   init.c                                             :+:      :+:    :+:   */
+/*   builtin_jobs.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: 42sh                                       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -12,31 +12,30 @@
 
 #include "shell.h"
 
-t_shell *shell_init(char **envp) {
-  t_shell *shell;
-
-  shell = ft_calloc(1, sizeof(t_shell));
-  if (!shell)
-    return (NULL);
-  shell->env = env_copy(envp);
-  if (!shell->env) {
-    free(shell);
-    return (NULL);
-  }
-  shell->vars = NULL;
-  shell->jobs = NULL;
-  shell->job_count = 0;
-  shell->exit_code = 0;
-  shell->running = 1;
-  return (shell);
+static const char *job_status_str(t_job_status status) {
+  if (status == JOB_RUNNING)
+    return ("Running");
+  if (status == JOB_STOPPED)
+    return ("Stopped");
+  if (status == JOB_DONE)
+    return ("Done");
+  return ("Unknown");
 }
 
-void shell_destroy(t_shell *shell) {
-  if (!shell)
-    return;
-  env_free(shell->env);
-  var_list_free(shell->vars);
-  job_list_free(shell->jobs);
-  rl_clear_history();
-  free(shell);
+int builtin_jobs(char **argv, t_shell *shell) {
+  t_job *cur;
+
+  (void)argv;
+  job_update_status(shell);
+  cur = shell->jobs;
+  while (cur) {
+    ft_putstr_fd("[", 1);
+    ft_putnbr_fd(cur->id, 1);
+    ft_putstr_fd("]  ", 1);
+    ft_putstr_fd((char *)job_status_str(cur->status), 1);
+    ft_putstr_fd("\t\t", 1);
+    ft_putendl_fd(cur->cmd, 1);
+    cur = cur->next;
+  }
+  return (0);
 }

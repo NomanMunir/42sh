@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   init.c                                             :+:      :+:    :+:   */
+/*   lexer_utils.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: 42sh                                       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -11,32 +11,47 @@
 /* ************************************************************************** */
 
 #include "shell.h"
+#include "token.h"
 
-t_shell *shell_init(char **envp) {
-  t_shell *shell;
+t_token *token_new(t_token_type type, const char *value) {
+  t_token *tok;
 
-  shell = ft_calloc(1, sizeof(t_shell));
-  if (!shell)
+  tok = ft_calloc(1, sizeof(t_token));
+  if (!tok)
     return (NULL);
-  shell->env = env_copy(envp);
-  if (!shell->env) {
-    free(shell);
-    return (NULL);
-  }
-  shell->vars = NULL;
-  shell->jobs = NULL;
-  shell->job_count = 0;
-  shell->exit_code = 0;
-  shell->running = 1;
-  return (shell);
+  tok->type = type;
+  if (value)
+    tok->value = ft_strdup(value);
+  tok->next = NULL;
+  return (tok);
 }
 
-void shell_destroy(t_shell *shell) {
-  if (!shell)
+void token_add_back(t_token **head, t_token *new_tok) {
+  t_token *cur;
+
+  if (!head || !new_tok)
     return;
-  env_free(shell->env);
-  var_list_free(shell->vars);
-  job_list_free(shell->jobs);
-  rl_clear_history();
-  free(shell);
+  if (!*head) {
+    *head = new_tok;
+    return;
+  }
+  cur = *head;
+  while (cur->next)
+    cur = cur->next;
+  cur->next = new_tok;
+}
+
+void token_list_free(t_token *head) {
+  t_token *tmp;
+
+  while (head) {
+    tmp = head->next;
+    free(head->value);
+    free(head);
+    head = tmp;
+  }
+}
+
+int is_operator_char(char c) {
+  return (c == '|' || c == '&' || c == ';' || c == '<' || c == '>');
 }

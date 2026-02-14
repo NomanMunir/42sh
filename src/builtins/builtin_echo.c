@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   init.c                                             :+:      :+:    :+:   */
+/*   builtin_echo.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: 42sh                                       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -12,31 +12,24 @@
 
 #include "shell.h"
 
-t_shell *shell_init(char **envp) {
-  t_shell *shell;
+int builtin_echo(char **argv, t_shell *shell) {
+  int i;
+  int newline;
 
-  shell = ft_calloc(1, sizeof(t_shell));
-  if (!shell)
-    return (NULL);
-  shell->env = env_copy(envp);
-  if (!shell->env) {
-    free(shell);
-    return (NULL);
+  (void)shell;
+  i = 1;
+  newline = 1;
+  if (argv[i] && ft_strncmp(argv[i], "-n", 3) == 0) {
+    newline = 0;
+    i++;
   }
-  shell->vars = NULL;
-  shell->jobs = NULL;
-  shell->job_count = 0;
-  shell->exit_code = 0;
-  shell->running = 1;
-  return (shell);
-}
-
-void shell_destroy(t_shell *shell) {
-  if (!shell)
-    return;
-  env_free(shell->env);
-  var_list_free(shell->vars);
-  job_list_free(shell->jobs);
-  rl_clear_history();
-  free(shell);
+  while (argv[i]) {
+    ft_putstr_fd(argv[i], 1);
+    if (argv[i + 1])
+      ft_putchar_fd(' ', 1);
+    i++;
+  }
+  if (newline)
+    ft_putchar_fd('\n', 1);
+  return (0);
 }

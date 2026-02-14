@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   init.c                                             :+:      :+:    :+:   */
+/*   token.h                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: 42sh                                       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -10,33 +10,40 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "shell.h"
+#ifndef TOKEN_H
+# define TOKEN_H
 
-t_shell *shell_init(char **envp) {
-  t_shell *shell;
+typedef enum e_token_type
+{
+	TOK_WORD,
+	TOK_PIPE,
+	TOK_AND,
+	TOK_OR,
+	TOK_SEMI,
+	TOK_REDIR_IN,
+	TOK_REDIR_OUT,
+	TOK_REDIR_APPEND,
+	TOK_HEREDOC,
+	TOK_REDIR_OUT_FD,
+	TOK_REDIR_IN_FD,
+	TOK_AMP,
+	TOK_EOF
+}	t_token_type;
 
-  shell = ft_calloc(1, sizeof(t_shell));
-  if (!shell)
-    return (NULL);
-  shell->env = env_copy(envp);
-  if (!shell->env) {
-    free(shell);
-    return (NULL);
-  }
-  shell->vars = NULL;
-  shell->jobs = NULL;
-  shell->job_count = 0;
-  shell->exit_code = 0;
-  shell->running = 1;
-  return (shell);
-}
+typedef struct s_token
+{
+	t_token_type	type;
+	char			*value;
+	struct s_token	*next;
+}	t_token;
 
-void shell_destroy(t_shell *shell) {
-  if (!shell)
-    return;
-  env_free(shell->env);
-  var_list_free(shell->vars);
-  job_list_free(shell->jobs);
-  rl_clear_history();
-  free(shell);
-}
+/* lexer/lexer.c */
+t_token		*lexer(const char *input);
+
+/* lexer/lexer_utils.c */
+t_token		*token_new(t_token_type type, const char *value);
+void		token_add_back(t_token **head, t_token *new_tok);
+void		token_list_free(t_token *head);
+int			is_operator_char(char c);
+
+#endif

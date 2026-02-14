@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   init.c                                             :+:      :+:    :+:   */
+/*   builtin_export.c                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: 42sh                                       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -12,31 +12,42 @@
 
 #include "shell.h"
 
-t_shell *shell_init(char **envp) {
-  t_shell *shell;
+static void print_exports(t_shell *shell) {
+  int i;
 
-  shell = ft_calloc(1, sizeof(t_shell));
-  if (!shell)
-    return (NULL);
-  shell->env = env_copy(envp);
-  if (!shell->env) {
-    free(shell);
-    return (NULL);
+  i = 0;
+  while (shell->env[i]) {
+    ft_putstr_fd("declare -x ", 1);
+    ft_putendl_fd(shell->env[i], 1);
+    i++;
   }
-  shell->vars = NULL;
-  shell->jobs = NULL;
-  shell->job_count = 0;
-  shell->exit_code = 0;
-  shell->running = 1;
-  return (shell);
 }
 
-void shell_destroy(t_shell *shell) {
-  if (!shell)
-    return;
-  env_free(shell->env);
-  var_list_free(shell->vars);
-  job_list_free(shell->jobs);
-  rl_clear_history();
-  free(shell);
+int builtin_export(char **argv, t_shell *shell) {
+  char *eq;
+  char *name;
+  char *value;
+  int i;
+
+  if (!argv[1]) {
+    print_exports(shell);
+    return (0);
+  }
+  i = 1;
+  while (argv[i]) {
+    eq = ft_strchr(argv[i], '=');
+    if (eq) {
+      name = ft_substr(argv[i], 0, eq - argv[i]);
+      value = ft_strdup(eq + 1);
+      env_set(shell, name, value);
+      free(name);
+      free(value);
+    } else {
+      value = var_get(shell, argv[i]);
+      if (value)
+        env_set(shell, argv[i], value);
+    }
+    i++;
+  }
+  return (0);
 }
