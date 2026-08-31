@@ -16,6 +16,11 @@
 static int file_test(const char *flag, const char *path) {
   struct stat sb;
 
+  if (ft_strncmp(flag, "-L", 3) == 0) {
+    if (lstat(path, &sb) < 0)
+      return (1);
+    return (S_ISLNK(sb.st_mode) ? 0 : 1);
+  }
   if (stat(path, &sb) < 0)
     return (1);
   if (ft_strncmp(flag, "-e", 3) == 0)
@@ -24,6 +29,18 @@ static int file_test(const char *flag, const char *path) {
     return (S_ISREG(sb.st_mode) ? 0 : 1);
   if (ft_strncmp(flag, "-d", 3) == 0)
     return (S_ISDIR(sb.st_mode) ? 0 : 1);
+  if (ft_strncmp(flag, "-b", 3) == 0)
+    return (S_ISBLK(sb.st_mode) ? 0 : 1);
+  if (ft_strncmp(flag, "-c", 3) == 0)
+    return (S_ISCHR(sb.st_mode) ? 0 : 1);
+  if (ft_strncmp(flag, "-p", 3) == 0)
+    return (S_ISFIFO(sb.st_mode) ? 0 : 1);
+  if (ft_strncmp(flag, "-S", 3) == 0)
+    return (S_ISSOCK(sb.st_mode) ? 0 : 1);
+  if (ft_strncmp(flag, "-g", 3) == 0)
+    return ((sb.st_mode & S_ISGID) ? 0 : 1);
+  if (ft_strncmp(flag, "-u", 3) == 0)
+    return ((sb.st_mode & S_ISUID) ? 0 : 1);
   if (ft_strncmp(flag, "-r", 3) == 0)
     return ((sb.st_mode & S_IRUSR) ? 0 : 1);
   if (ft_strncmp(flag, "-w", 3) == 0)
@@ -80,7 +97,7 @@ static int eval_test(char **argv, int i) {
   if (ft_strncmp(argv[i], "!", 2) == 0)
     return (eval_test(argv, i + 1) == 0 ? 1 : 0);
   if (argv[i][0] == '-' && argv[i][1] && !argv[i][2] && argv[i + 1]) {
-    if (ft_strchr("efdrwxs", argv[i][1]))
+    if (ft_strchr("efdrwxsbcgLpSu", argv[i][1]))
       return (file_test(argv[i], argv[i + 1]));
     if (argv[i][1] == 'z' || argv[i][1] == 'n')
       return (string_test(argv, i));

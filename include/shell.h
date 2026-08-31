@@ -111,6 +111,9 @@ void expand_tilde_argv(t_node *node, t_shell *shell);
 char *expand_command_sub(const char *cmd, t_shell *shell);
 char *expand_cmd_substitutions(const char *word, t_shell *shell);
 
+/* ---- expand/expand_arith.c ---- */
+char *expand_arithmetic(const char *expr, t_shell *shell);
+
 /* ---- expand/expand_glob.c ---- */
 void expand_glob_argv(t_node *node);
 

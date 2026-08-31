@@ -113,6 +113,7 @@ static void newlines_to_spaces(char *s) {
 char *expand_cmd_substitutions(const char *word, t_shell *shell) {
   char *result;
   char *subcmd;
+  char *arith_expr;
   char *output;
   int i;
   int end;
@@ -130,8 +131,14 @@ char *expand_cmd_substitutions(const char *word, t_shell *shell) {
         continue;
       }
       subcmd = ft_substr(word, i + 2, end - (i + 2));
-      output = expand_command_sub(subcmd, shell);
-      newlines_to_spaces(output);
+      if (word[i + 2] == '(' && subcmd[0] == '(') {
+        arith_expr = ft_substr(subcmd, 1, ft_strlen(subcmd) - 2);
+        output = expand_arithmetic(arith_expr, shell);
+        free(arith_expr);
+      } else {
+        output = expand_command_sub(subcmd, shell);
+        newlines_to_spaces(output);
+      }
       result = append_str(result, output);
       free(subcmd);
       free(output);

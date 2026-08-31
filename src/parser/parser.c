@@ -30,7 +30,10 @@ static int parse_redir(t_token **cur, t_node *cmd) {
   int fd;
 
   rtype = (*cur)->type;
-  if (rtype == TOK_REDIR_IN || rtype == TOK_HEREDOC || rtype == TOK_REDIR_IN_FD)
+  if ((*cur)->fd >= 0)
+    fd = (*cur)->fd;
+  else if (rtype == TOK_REDIR_IN || rtype == TOK_HEREDOC ||
+           rtype == TOK_REDIR_IN_FD)
     fd = STDIN_FILENO;
   else
     fd = STDOUT_FILENO;
@@ -60,6 +63,41 @@ static void cmd_argv_add(t_node *cmd, const char *word) {
   cmd->argc++;
 }
 
+static int is_assignment_word(const char *s) {
+  int i;
+
+  if (!s || !ft_isalpha(s[0]))
+    return (0);
+  i = 1;
+  while (s[i] && s[i] != '=') {
+    if (!ft_isalnum(s[i]) && s[i] != '_')
+      return (0);
+    i++;
+  }
+  return (s[i] == '=');
+}
+
+static void cmd_assign_add(t_node *cmd, const char *word) {
+  char **new_assigns;
+  int count;
+  int i;
+
+  count = 0;
+  while (cmd->assigns && cmd->assigns[count])
+    count++;
+  new_assigns = ft_calloc(count + 2, sizeof(char *));
+  if (!new_assigns)
+    return;
+  i = 0;
+  while (i < count) {
+    new_assigns[i] = cmd->assigns[i];
+    i++;
+  }
+  new_assigns[i] = ft_strdup(word);
+  free(cmd->assigns);
+  cmd->assigns = new_assigns;
+}
+
 static t_node *parse_command(t_token **cur) {
   t_node *cmd;
 
@@ -74,12 +112,15 @@ static t_node *parse_command(t_token **cur) {
         return (NULL);
       }
     } else if ((*cur)->type == TOK_WORD) {
-      cmd_argv_add(cmd, (*cur)->value);
+      if (cmd->argc == 0 && is_assignment_word((*cur)->value))
+        cmd_assign_add(cmd, (*cur)->value);
+      else
+        cmd_argv_add(cmd, (*cur)->value);
       *cur = (*cur)->next;
     } else
       break;
   }
-  if (cmd->argc == 0 && !cmd->redirs) {
+  if (cmd->argc == 0 && !cmd->redirs && !cmd->assigns) {
     node_free(cmd);
     return (NULL);
   }

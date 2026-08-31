@@ -55,20 +55,18 @@ static char *expand_value(const char *raw, t_shell *shell) {
   return (after_var);
 }
 
-static int handle_assignment(t_node *node, t_shell *shell) {
+static int handle_assignment(char **assigns, t_shell *shell) {
   char *eq;
   char *name;
   char *value;
   int i;
 
-  if (!node->argv || !node->argv[0])
-    return (0);
   i = 0;
-  while (node->argv[i]) {
-    eq = ft_strchr(node->argv[i], '=');
-    if (!eq || eq == node->argv[i])
+  while (assigns[i]) {
+    eq = ft_strchr(assigns[i], '=');
+    if (!eq || eq == assigns[i])
       return (-1);
-    name = ft_substr(node->argv[i], 0, eq - node->argv[i]);
+    name = ft_substr(assigns[i], 0, eq - assigns[i]);
     value = expand_value(eq + 1, shell);
     var_set(shell, name, value);
     free(name);
@@ -78,18 +76,61 @@ static int handle_assignment(t_node *node, t_shell *shell) {
   return (0);
 }
 
-static int is_assignment(const char *s) {
-  int i;
+/*
+** apply_temp_env / restore_temp_env: implement "NAME=value cmd" — the
+** assignment is only visible to this one command's environment (and
+** thus its children), never persisted to the shell's own variables.
+** old_values[i] holds a copy of the prior env entry, or NULL if the
+** name was unset before, so it can be restored exactly afterward.
+*/
+static char **apply_temp_env(char **assigns, t_shell *shell) {
+  int n;
+  char **old_values;
+  char *eq;
+  char *name;
+  char *value;
+  char *existing;
 
-  if (!s || !ft_isalpha(s[0]))
-    return (0);
-  i = 1;
-  while (s[i] && s[i] != '=') {
-    if (!ft_isalnum(s[i]) && s[i] != '_')
-      return (0);
+  n = 0;
+  while (assigns[n])
+    n++;
+  old_values = ft_calloc(n + 1, sizeof(char *));
+  if (!old_values)
+    return (NULL);
+  while (n-- > 0) {
+    eq = ft_strchr(assigns[n], '=');
+    name = ft_substr(assigns[n], 0, eq - assigns[n]);
+    value = expand_value(eq + 1, shell);
+    existing = env_get(shell->env, name);
+    old_values[n] = existing ? ft_strdup(existing) : NULL;
+    env_set(shell, name, value);
+    free(name);
+    free(value);
+  }
+  return (old_values);
+}
+
+static void restore_temp_env(char **assigns, char **old_values,
+                              t_shell *shell) {
+  int i;
+  char *eq;
+  char *name;
+
+  if (!old_values)
+    return;
+  i = 0;
+  while (assigns[i]) {
+    eq = ft_strchr(assigns[i], '=');
+    name = ft_substr(assigns[i], 0, eq - assigns[i]);
+    if (old_values[i]) {
+      env_set(shell, name, old_values[i]);
+      free(old_values[i]);
+    } else
+      env_unset(shell, name);
+    free(name);
     i++;
   }
-  return (s[i] == '=');
+  free(old_values);
 }
 
 static void run_expansions(t_node *node, t_shell *shell) {
@@ -159,17 +200,28 @@ static int run_builtin_with_redir(t_node *node, t_shell *shell) {
 }
 
 int execute_simple_cmd(t_node *node, t_shell *shell) {
+  char **saved_env;
+  int ret;
+
   if (!node->argv || !node->argv[0]) {
+    if (node->assigns)
+      return (handle_assignment(node->assigns, shell));
     if (node->redirs)
       return (apply_redirections(node->redirs) < 0);
     return (0);
   }
-  if (is_assignment(node->argv[0]) && !node->argv[1])
-    return (handle_assignment(node, shell));
+  saved_env = NULL;
+  if (node->assigns)
+    saved_env = apply_temp_env(node->assigns, shell);
   run_expansions(node, shell);
-  if (!node->argv[0] || !node->argv[0][0])
+  if (!node->argv[0] || !node->argv[0][0]) {
+    restore_temp_env(node->assigns, saved_env, shell);
     return (0);
+  }
   if (is_builtin_cmd(node->argv[0]))
-    return (run_builtin_with_redir(node, shell));
-  return (exec_external(node, shell));
+    ret = run_builtin_with_redir(node, shell);
+  else
+    ret = exec_external(node, shell);
+  restore_temp_env(node->assigns, saved_env, shell);
+  return (ret);
 }

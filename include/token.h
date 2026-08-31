@@ -34,6 +34,7 @@ typedef struct s_token
 {
 	t_token_type	type;
 	char			*value;
+	int				fd; /* explicit fd digit before a redir op (e.g. 2>&1), -1 if none */
 	struct s_token	*next;
 }	t_token;
 

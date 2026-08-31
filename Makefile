@@ -44,6 +44,7 @@ SRC_FILES	= main.c \
 			  expand/expand_tilde.c \
 			  expand/expand_cmd.c \
 			  expand/expand_glob.c \
+			  expand/expand_arith.c \
 			  exec/executor.c \
 			  exec/exec_cmd.c \
 			  exec/exec_pipe.c \

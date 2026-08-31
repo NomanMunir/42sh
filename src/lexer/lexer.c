@@ -13,19 +13,34 @@
 #include "shell.h"
 #include "token.h"
 
-static int read_operator(const char *input, int i, t_token **tokens) {
+/*
+** make_redir_op: create a redir token and stamp it with the explicit fd
+** given by a digit prefix (e.g. the 2 in 2>&1), or -1 when there was none.
+*/
+static int make_redir_op(t_token **tokens, t_token_type type, const char *val,
+                          int fd, int len, int i) {
+  t_token *tok;
+
+  tok = token_new(type, val);
+  if (tok)
+    tok->fd = fd;
+  token_add_back(tokens, tok);
+  return (i + len);
+}
+
+static int read_operator(const char *input, int i, t_token **tokens, int fd) {
   if (input[i] == '|' && input[i + 1] == '|')
     return (token_add_back(tokens, token_new(TOK_OR, "||")), i + 2);
   if (input[i] == '&' && input[i + 1] == '&')
     return (token_add_back(tokens, token_new(TOK_AND, "&&")), i + 2);
   if (input[i] == '>' && input[i + 1] == '>')
-    return (token_add_back(tokens, token_new(TOK_REDIR_APPEND, ">>")), i + 2);
+    return (make_redir_op(tokens, TOK_REDIR_APPEND, ">>", fd, 2, i));
   if (input[i] == '<' && input[i + 1] == '<')
-    return (token_add_back(tokens, token_new(TOK_HEREDOC, "<<")), i + 2);
+    return (make_redir_op(tokens, TOK_HEREDOC, "<<", fd, 2, i));
   if (input[i] == '>' && input[i + 1] == '&')
-    return (token_add_back(tokens, token_new(TOK_REDIR_OUT_FD, ">&")), i + 2);
+    return (make_redir_op(tokens, TOK_REDIR_OUT_FD, ">&", fd, 2, i));
   if (input[i] == '<' && input[i + 1] == '&')
-    return (token_add_back(tokens, token_new(TOK_REDIR_IN_FD, "<&")), i + 2);
+    return (make_redir_op(tokens, TOK_REDIR_IN_FD, "<&", fd, 2, i));
   if (input[i] == '|')
     return (token_add_back(tokens, token_new(TOK_PIPE, "|")), i + 1);
   if (input[i] == '&')
@@ -33,9 +48,9 @@ static int read_operator(const char *input, int i, t_token **tokens) {
   if (input[i] == ';')
     return (token_add_back(tokens, token_new(TOK_SEMI, ";")), i + 1);
   if (input[i] == '>')
-    return (token_add_back(tokens, token_new(TOK_REDIR_OUT, ">")), i + 1);
+    return (make_redir_op(tokens, TOK_REDIR_OUT, ">", fd, 1, i));
   if (input[i] == '<')
-    return (token_add_back(tokens, token_new(TOK_REDIR_IN, "<")), i + 1);
+    return (make_redir_op(tokens, TOK_REDIR_IN, "<", fd, 1, i));
   return (i);
 }
 
@@ -105,6 +120,36 @@ static int read_cmd_sub(const char *input, int i, char **word) {
   return (i);
 }
 
+/*
+** scan_redir_fd: if the run of digits starting at i is immediately
+** followed by '<' or '>' (no space), it is an explicit fd prefix such
+** as the 2 in "2>&1", not a word of its own. Returns the digit run
+** length, or 0 if this position isn't a fd prefix.
+*/
+static int scan_redir_fd(const char *input, int i) {
+  int start;
+
+  start = i;
+  while (ft_isdigit(input[i]))
+    i++;
+  if (i > start && (input[i] == '<' || input[i] == '>'))
+    return (i - start);
+  return (0);
+}
+
+static int parse_fd_number(const char *input, int start, int len) {
+  int value;
+  int i;
+
+  value = 0;
+  i = 0;
+  while (i < len) {
+    value = value * 10 + (input[start + i] - '0');
+    i++;
+  }
+  return (value);
+}
+
 static int read_word(const char *input, int i, t_token **tokens) {
   char *word;
 
@@ -134,6 +179,7 @@ static int read_word(const char *input, int i, t_token **tokens) {
 t_token *lexer(const char *input) {
   t_token *tokens;
   int i;
+  int fd_len;
 
   tokens = NULL;
   i = 0;
@@ -142,8 +188,12 @@ t_token *lexer(const char *input) {
       i++;
       continue;
     }
-    if (is_operator_char(input[i]))
-      i = read_operator(input, i, &tokens);
+    fd_len = scan_redir_fd(input, i);
+    if (fd_len > 0) {
+      i = read_operator(input, i + fd_len, &tokens,
+                         parse_fd_number(input, i, fd_len));
+    } else if (is_operator_char(input[i]))
+      i = read_operator(input, i, &tokens, -1);
     else
       i = read_word(input, i, &tokens);
   }

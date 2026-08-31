@@ -22,6 +22,7 @@ t_token *token_new(t_token_type type, const char *value) {
   tok->type = type;
   if (value)
     tok->value = ft_strdup(value);
+  tok->fd = -1;
   tok->next = NULL;
   return (tok);
 }
