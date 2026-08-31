@@ -28,6 +28,55 @@ char **ft_realloc_arr(char **arr, int old_count, int new_cap) {
   return (new_arr);
 }
 
+/*
+** read_input_line: single entry point for reading one line of input.
+** Interactive sessions use readline (line edition, history, prompt);
+** non-interactive sessions read straight from stdin one byte at a time
+** so that a here-document body collected mid-parse stays in sync with
+** the main read loop instead of being pre-buffered away from it.
+*/
+static char *stdin_line_append(char *line, char c) {
+  size_t len;
+  char *out;
+
+  len = line ? ft_strlen(line) : 0;
+  out = malloc(len + 2);
+  if (!out)
+    return (line);
+  if (line)
+    ft_memcpy(out, line, len);
+  out[len] = c;
+  out[len + 1] = '\0';
+  free(line);
+  return (out);
+}
+
+static char *read_stdin_line(void) {
+  char *line;
+  char c;
+  int n;
+
+  line = ft_strdup("");
+  if (!line)
+    return (NULL);
+  n = read(STDIN_FILENO, &c, 1);
+  while (n == 1) {
+    if (c == '\n')
+      return (line);
+    line = stdin_line_append(line, c);
+    n = read(STDIN_FILENO, &c, 1);
+  }
+  if (line[0] == '\0')
+    return (free(line), NULL);
+  return (line);
+}
+
+char *read_input_line(t_shell *shell, const char *prompt) {
+  if (shell->interactive)
+    return (readline(prompt));
+  return (read_stdin_line());
+}
+
 void process_input(const char *line, t_shell *shell) {
   t_token *tokens;
   t_node *ast;
@@ -37,6 +86,7 @@ void process_input(const char *line, t_shell *shell) {
     return;
   ast = parse(tokens);
   if (ast) {
+    collect_heredocs(ast, shell);
     shell->exit_code = execute_ast(ast, shell);
     node_free(ast);
   }

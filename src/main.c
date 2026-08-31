@@ -28,19 +28,29 @@ static char *preprocess_line(const char *line, t_shell *shell) {
   return (alias_line);
 }
 
-static void shell_loop_interactive(t_shell *shell) {
+/*
+** shell_loop: one read loop for both modes. read_input_line returns a
+** readline-edited line when interactive and a plain stdin line when not,
+** so here-documents (collected inside process_input) read from the same
+** source the loop does. History and the EOF "exit" echo are interactive
+** only.
+*/
+static void shell_loop(t_shell *shell) {
   char *line;
   char *processed;
 
   while (shell->running) {
-    job_update_status(shell);
-    line = readline(PROMPT);
+    if (shell->interactive)
+      job_update_status(shell);
+    line = read_input_line(shell, PROMPT);
     if (!line) {
-      ft_putendl_fd("exit", STDOUT_FILENO);
+      if (shell->interactive)
+        ft_putendl_fd("exit", STDOUT_FILENO);
       break;
     }
     if (*line) {
-      add_history(line);
+      if (shell->interactive)
+        add_history(line);
       processed = preprocess_line(line, shell);
       if (processed) {
         process_input(processed, shell);
@@ -48,29 +58,6 @@ static void shell_loop_interactive(t_shell *shell) {
       }
     }
     free(line);
-  }
-}
-
-static void shell_loop_pipe(t_shell *shell) {
-  char *line;
-  char *processed;
-  char buf[65536];
-  int n;
-
-  n = read(STDIN_FILENO, buf, sizeof(buf) - 1);
-  if (n <= 0)
-    return;
-  buf[n] = '\0';
-  line = ft_strtok(buf, "\n");
-  while (line && shell->running) {
-    if (*line) {
-      processed = preprocess_line(line, shell);
-      if (processed) {
-        process_input(processed, shell);
-        free(processed);
-      }
-    }
-    line = ft_strtok(NULL, "\n");
   }
 }
 
@@ -86,10 +73,7 @@ int main(int argc, char **argv, char **envp) {
     return (EXIT_FAILURE);
   }
   setup_signals();
-  if (shell->interactive)
-    shell_loop_interactive(shell);
-  else
-    shell_loop_pipe(shell);
+  shell_loop(shell);
   exit_code = shell->exit_code;
   shell_destroy(shell);
   return (exit_code);

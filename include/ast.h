@@ -27,6 +27,7 @@ typedef enum e_node_type {
 typedef struct s_redir {
   t_token_type type;
   char *target;
+  char *heredoc_body;
   int fd;
   struct s_redir *next;
 } t_redir;

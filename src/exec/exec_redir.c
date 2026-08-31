@@ -33,22 +33,18 @@ static int open_redir_file(t_redir *redir) {
   return (fd);
 }
 
+/*
+** apply_heredoc: the body was already gathered by collect_heredocs (in
+** the parent, before any fork), so here we only replay it into a pipe
+** and wire that pipe onto stdin.
+*/
 static int apply_heredoc(t_redir *redir) {
   int pipefd[2];
-  char *line;
 
   if (pipe(pipefd) < 0)
     return (-1);
-  while (1) {
-    line = readline("> ");
-    if (!line ||
-        ft_strncmp(line, redir->target, ft_strlen(redir->target) + 1) == 0) {
-      free(line);
-      break;
-    }
-    ft_putendl_fd(line, pipefd[1]);
-    free(line);
-  }
+  if (redir->heredoc_body)
+    ft_putstr_fd(redir->heredoc_body, pipefd[1]);
   close(pipefd[1]);
   if (dup2(pipefd[0], STDIN_FILENO) < 0) {
     close(pipefd[0]);
@@ -102,5 +98,58 @@ int apply_redirections(t_redir *redirs) {
     }
     redirs = redirs->next;
   }
+  return (0);
+}
+
+static char *append_line(char *body, const char *line) {
+  char *tmp;
+
+  tmp = ft_strjoin(body, line);
+  free(body);
+  body = ft_strjoin(tmp, "\n");
+  free(tmp);
+  return (body);
+}
+
+/*
+** read_heredoc_body: read input lines until the delimiter is seen (or
+** EOF), building the here-document body. Only the parent ever calls
+** this, before any command is forked, so it shares the input stream
+** cleanly with the main read loop.
+*/
+static char *read_heredoc_body(t_redir *redir, t_shell *shell) {
+  char *body;
+  char *line;
+  const char *prompt;
+
+  body = ft_strdup("");
+  prompt = shell->interactive ? "> " : "";
+  while (1) {
+    line = read_input_line(shell, prompt);
+    if (!line)
+      break;
+    if (ft_strncmp(line, redir->target, ft_strlen(redir->target) + 1) == 0) {
+      free(line);
+      break;
+    }
+    body = append_line(body, line);
+    free(line);
+  }
+  return (body);
+}
+
+int collect_heredocs(t_node *node, t_shell *shell) {
+  t_redir *redir;
+
+  if (!node)
+    return (0);
+  redir = node->redirs;
+  while (redir) {
+    if (redir->type == TOK_HEREDOC && !redir->heredoc_body)
+      redir->heredoc_body = read_heredoc_body(redir, shell);
+    redir = redir->next;
+  }
+  collect_heredocs(node->left, shell);
+  collect_heredocs(node->right, shell);
   return (0);
 }

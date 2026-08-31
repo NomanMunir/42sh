@@ -91,6 +91,7 @@ void setup_signals(void);
 char **ft_realloc_arr(char **arr, int old_count, int new_cap);
 void process_input(const char *line, t_shell *shell);
 char *ft_strtok(char *str, const char *delim);
+char *read_input_line(t_shell *shell, const char *prompt);
 
 /* ---- vars/vars.c ---- */
 t_var *var_find(t_var *vars, const char *name);
@@ -128,6 +129,7 @@ int execute_pipe(t_node *node, t_shell *shell);
 
 /* ---- exec/exec_redir.c ---- */
 int apply_redirections(t_redir *redirs);
+int collect_heredocs(t_node *node, t_shell *shell);
 
 /* ---- exec/exec_path.c ---- */
 char *resolve_path(const char *cmd, char **env);

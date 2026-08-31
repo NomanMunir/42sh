@@ -30,6 +30,7 @@ static void redir_free(t_redir *redir) {
   while (redir) {
     tmp = redir->next;
     free(redir->target);
+    free(redir->heredoc_body);
     free(redir);
     redir = tmp;
   }

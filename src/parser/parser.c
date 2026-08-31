@@ -15,14 +15,19 @@
 
 
 /*
-** Grammar (recursive descent):
-**   list      : pipeline (('&&' | '||' | ';' | '&') pipeline)*
+** Grammar (recursive descent), lowest precedence first:
+**   list      : and_or ((';' | '&') and_or)* (';' | '&')?
+**   and_or    : pipeline (('&&' | '||') pipeline)*
 **   pipeline  : command ('|' command)*
 **   command   : (assignment)* WORD+ (redirection)*
+**
+** A trailing '&' backgrounds the and_or that precedes it, while the
+** rest of the list keeps running as a sequence.
 */
 
 static t_node *parse_command(t_token **cur);
 static t_node *parse_pipeline(t_token **cur);
+static t_node *parse_and_or(t_token **cur);
 static t_node *parse_list(t_token **cur);
 
 static int parse_redir(t_token **cur, t_node *cmd) {
@@ -162,7 +167,17 @@ static t_node *make_binary(t_node_type type, t_node *left, t_node *right) {
   return (node);
 }
 
-static t_node *parse_list(t_token **cur) {
+static t_node *make_bg(t_node *child) {
+  t_node *node;
+
+  node = node_new(NODE_BG);
+  if (!node)
+    return (child);
+  node->left = child;
+  return (node);
+}
+
+static t_node *parse_and_or(t_token **cur) {
   t_node *left;
   t_node *right;
   t_node_type ntype;
@@ -170,29 +185,49 @@ static t_node *parse_list(t_token **cur) {
   left = parse_pipeline(cur);
   if (!left)
     return (NULL);
-  while (*cur && ((*cur)->type == TOK_AND || (*cur)->type == TOK_OR ||
-                  (*cur)->type == TOK_SEMI || (*cur)->type == TOK_AMP)) {
+  while (*cur && ((*cur)->type == TOK_AND || (*cur)->type == TOK_OR)) {
     if ((*cur)->type == TOK_AND)
       ntype = NODE_AND;
-    else if ((*cur)->type == TOK_OR)
-      ntype = NODE_OR;
-    else if ((*cur)->type == TOK_AMP)
-      ntype = NODE_BG;
     else
-      ntype = NODE_SEQ;
+      ntype = NODE_OR;
     *cur = (*cur)->next;
-    if (!*cur || (*cur)->type == TOK_EOF) {
-      if (ntype == NODE_SEQ || ntype == NODE_BG)
-        return (make_binary(ntype, left, NULL));
-      ft_putendl_fd("42sh: syntax error near operator", 2);
-      return (node_free(left), NULL);
-    }
     right = parse_pipeline(cur);
-    if (!right && (ntype == NODE_AND || ntype == NODE_OR)) {
+    if (!right) {
       ft_putendl_fd("42sh: syntax error near operator", 2);
       return (node_free(left), NULL);
     }
     left = make_binary(ntype, left, right);
+  }
+  return (left);
+}
+
+/*
+** parse_list: join and_or units with ';' and '&'. The separator that
+** *follows* a unit decides whether that unit runs in the background,
+** so we peek it before folding the unit into the sequence tree.
+*/
+static t_node *parse_list(t_token **cur) {
+  t_node *left;
+  t_node *unit;
+  int backgrounded;
+
+  left = NULL;
+  while (1) {
+    unit = parse_and_or(cur);
+    if (!unit)
+      break;
+    backgrounded = (*cur && (*cur)->type == TOK_AMP);
+    if (backgrounded)
+      unit = make_bg(unit);
+    if (!left)
+      left = unit;
+    else
+      left = make_binary(NODE_SEQ, left, unit);
+    if (!*cur || ((*cur)->type != TOK_SEMI && (*cur)->type != TOK_AMP))
+      break;
+    *cur = (*cur)->next;
+    if (!*cur || (*cur)->type == TOK_EOF)
+      break;
   }
   return (left);
 }
