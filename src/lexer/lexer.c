@@ -55,6 +55,7 @@ static char *word_append_char(char *word, char c) {
 static int read_single_quote(const char *input, int i, char **word) {
   i++;
   while (input[i] && input[i] != '\'') {
+    *word = word_append_char(*word, '\x01');
     *word = word_append_char(*word, input[i]);
     i++;
   }
@@ -70,6 +71,7 @@ static int read_double_quote(const char *input, int i, char **word) {
         (input[i + 1] == '"' || input[i + 1] == '\\' || input[i + 1] == '$' ||
          input[i + 1] == '`')) {
       i++;
+      *word = word_append_char(*word, '\x01');
       *word = word_append_char(*word, input[i]);
     } else
       *word = word_append_char(*word, input[i]);
@@ -77,6 +79,29 @@ static int read_double_quote(const char *input, int i, char **word) {
   }
   if (input[i] == '"')
     i++;
+  return (i);
+}
+
+/*
+** read_cmd_sub: when we see $( in unquoted context,
+** track paren depth and include everything up to and
+** including the closing ).
+*/
+static int read_cmd_sub(const char *input, int i, char **word) {
+  int depth;
+
+  *word = word_append_char(*word, '$');
+  *word = word_append_char(*word, '(');
+  i += 2;
+  depth = 1;
+  while (input[i] && depth > 0) {
+    if (input[i] == '(')
+      depth++;
+    else if (input[i] == ')')
+      depth--;
+    *word = word_append_char(*word, input[i]);
+    i++;
+  }
   return (i);
 }
 
@@ -90,8 +115,11 @@ static int read_word(const char *input, int i, t_token **tokens) {
       i = read_single_quote(input, i, &word);
     else if (input[i] == '"')
       i = read_double_quote(input, i, &word);
+    else if (input[i] == '$' && input[i + 1] == '(')
+      i = read_cmd_sub(input, i, &word);
     else if (input[i] == '\\' && input[i + 1]) {
       i++;
+      word = word_append_char(word, '\x01');
       word = word_append_char(word, input[i++]);
     } else
       word = word_append_char(word, input[i++]);

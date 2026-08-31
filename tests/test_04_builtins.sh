@@ -16,7 +16,7 @@ section "cd & pwd"
 run_test "cd to /tmp" "cd /tmp && pwd"
 run_test "cd to / " "cd / && pwd"
 run_test "cd home" "cd ~ && pwd"
-run_test "cd dash (OLDPWD)" "cd /tmp; cd /; cd - 2>/dev/null; pwd"
+run_test "cd dash (OLDPWD)" "cd /tmp; cd /; cd -; pwd"
 run_test "cd nonexistent" "cd /nonexistent_42sh_dir 2>/dev/null; echo \$?"
 
 section "type"

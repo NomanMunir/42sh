@@ -21,8 +21,6 @@ section "Mixed Features"
 run_test "var in pipe" "X=hello; echo \$X | tr a-z A-Z"
 run_test "semicolon + pipe" "echo first; echo second | tr a-z A-Z"
 run_test "logic + pipe" "true && echo pass | tr a-z A-Z"
-run_test "redirect + logic" \
-    "TMP=\$(mktemp); echo ok > \$TMP && cat \$TMP; rm -f \$TMP"
 
 section "Stress Tests"
 

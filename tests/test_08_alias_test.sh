@@ -5,16 +5,22 @@
 
 section "Aliases"
 
+# Aliases in piped mode: each line is processed separately,
+# so alias must be defined on a prior line.
 run_test_output "alias define and use" \
-    'alias greet="echo hello"; greet' \
+    "alias greet=\"echo hello\"
+greet" \
     "hello"
 
 run_test_output "alias with args" \
-    'alias say="echo"; say world' \
+    "alias say=\"echo\"
+say world" \
     "world"
 
 run_test_output "unalias removes" \
-    'alias hi="echo hi"; unalias hi; hi 2>/dev/null; echo $?' \
+    "alias hi=\"echo hi\"
+unalias hi
+hi 2>/dev/null; echo \$?" \
     "127"
 
 section "Test Builtin"

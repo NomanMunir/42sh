@@ -59,6 +59,8 @@ char *expand_command_sub(const char *cmd, t_shell *shell) {
   output = read_pipe_output(pipefd[0]);
   close(pipefd[0]);
   waitpid(pid, &status, 0);
+  if (WIFEXITED(status))
+    shell->exit_code = WEXITSTATUS(status);
   return (output);
 }
 
@@ -97,6 +99,17 @@ static char *append_chr(char *s, char c) {
   return (append_str(s, buf));
 }
 
+static void newlines_to_spaces(char *s) {
+  int i;
+
+  i = 0;
+  while (s[i]) {
+    if (s[i] == '\n')
+      s[i] = ' ';
+    i++;
+  }
+}
+
 char *expand_cmd_substitutions(const char *word, t_shell *shell) {
   char *result;
   char *subcmd;
@@ -107,7 +120,10 @@ char *expand_cmd_substitutions(const char *word, t_shell *shell) {
   result = ft_strdup("");
   i = 0;
   while (word[i]) {
-    if (word[i] == '$' && word[i + 1] == '(') {
+    if (word[i] == '\x01' && word[i + 1]) {
+      result = append_chr(result, word[i++]);
+      result = append_chr(result, word[i++]);
+    } else if (word[i] == '$' && word[i + 1] == '(') {
       end = find_closing_paren(word, i + 2);
       if (end < 0) {
         result = append_chr(result, word[i++]);
@@ -115,6 +131,7 @@ char *expand_cmd_substitutions(const char *word, t_shell *shell) {
       }
       subcmd = ft_substr(word, i + 2, end - (i + 2));
       output = expand_command_sub(subcmd, shell);
+      newlines_to_spaces(output);
       result = append_str(result, output);
       free(subcmd);
       free(output);

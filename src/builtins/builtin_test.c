@@ -80,7 +80,7 @@ static int eval_test(char **argv, int i) {
   if (ft_strncmp(argv[i], "!", 2) == 0)
     return (eval_test(argv, i + 1) == 0 ? 1 : 0);
   if (argv[i][0] == '-' && argv[i][1] && !argv[i][2] && argv[i + 1]) {
-    if (ft_strchr("efdRwxs", argv[i][1]))
+    if (ft_strchr("efdrwxs", argv[i][1]))
       return (file_test(argv[i], argv[i + 1]));
     if (argv[i][1] == 'z' || argv[i][1] == 'n')
       return (string_test(argv, i));

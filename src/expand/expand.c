@@ -78,6 +78,11 @@ static char *expand_dollar(const char *word, int *i, t_shell *shell) {
   return (ft_strdup(""));
 }
 
+/*
+** expand_variables: process the word, expanding $VAR / ${VAR} / $?
+** but skipping any char preceded by \x01 (the quote-protection marker).
+** After processing, all remaining \x01 markers are stripped.
+*/
 char *expand_variables(const char *word, t_shell *shell) {
   char *result;
   char *expanded;
@@ -86,7 +91,10 @@ char *expand_variables(const char *word, t_shell *shell) {
   result = ft_strdup("");
   i = 0;
   while (word[i]) {
-    if (word[i] == '$' && word[i + 1]) {
+    if (word[i] == '\x01' && word[i + 1]) {
+      i++;
+      result = append_char(result, word[i++]);
+    } else if (word[i] == '$' && word[i + 1]) {
       expanded = expand_dollar(word, &i, shell);
       result = append_str(result, expanded);
       free(expanded);

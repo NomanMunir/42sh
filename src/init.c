@@ -29,6 +29,7 @@ t_shell *shell_init(char **envp) {
   shell->job_count = 0;
   shell->exit_code = 0;
   shell->running = 1;
+  shell->interactive = isatty(STDIN_FILENO);
   return (shell);
 }
 
@@ -39,6 +40,7 @@ void shell_destroy(t_shell *shell) {
   var_list_free(shell->vars);
   alias_list_free(shell->aliases);
   job_list_free(shell->jobs);
-  rl_clear_history();
+  if (shell->interactive)
+    rl_clear_history();
   free(shell);
 }

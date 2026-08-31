@@ -13,7 +13,6 @@
 #include "ast.h"
 #include "shell.h"
 
-
 static int execute_bg(t_node *node, t_shell *shell) {
   pid_t pid;
 
@@ -38,12 +37,19 @@ int execute_ast(t_node *node, t_shell *shell) {
 
   if (!node)
     return (0);
-  if (node->type == NODE_CMD)
-    return (execute_simple_cmd(node, shell));
-  if (node->type == NODE_PIPE)
-    return (execute_pipe(node, shell));
+  if (node->type == NODE_CMD) {
+    ret = execute_simple_cmd(node, shell);
+    shell->exit_code = ret;
+    return (ret);
+  }
+  if (node->type == NODE_PIPE) {
+    ret = execute_pipe(node, shell);
+    shell->exit_code = ret;
+    return (ret);
+  }
   if (node->type == NODE_SEQ) {
-    execute_ast(node->left, shell);
+    ret = execute_ast(node->left, shell);
+    shell->exit_code = ret;
     return (execute_ast(node->right, shell));
   }
   if (node->type == NODE_AND) {

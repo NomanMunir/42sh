@@ -42,3 +42,37 @@ void process_input(const char *line, t_shell *shell) {
   }
   token_list_free(tokens);
 }
+
+static int is_delim(char c, const char *delim) {
+  while (*delim) {
+    if (c == *delim)
+      return (1);
+    delim++;
+  }
+  return (0);
+}
+
+char *ft_strtok(char *str, const char *delim) {
+  static char *saved;
+  char *start;
+
+  if (str)
+    saved = str;
+  if (!saved)
+    return (NULL);
+  while (*saved && is_delim(*saved, delim))
+    saved++;
+  if (!*saved) {
+    saved = NULL;
+    return (NULL);
+  }
+  start = saved;
+  while (*saved && !is_delim(*saved, delim))
+    saved++;
+  if (*saved) {
+    *saved = '\0';
+    saved++;
+  } else
+    saved = NULL;
+  return (start);
+}

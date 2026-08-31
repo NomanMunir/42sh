@@ -31,8 +31,9 @@ run_test() {
 
     local expected
     local actual
-    expected=$(echo "$cmd" | bash 2>/dev/null)
-    actual=$(echo "$cmd" | $SHELL_BIN 2>/dev/null)
+    # Use printf to avoid echo interpreting backslashes/flags
+    expected=$(printf "%s\n" "$cmd" | bash 2>/dev/null)
+    actual=$(printf "%s\n" "$cmd" | $SHELL_BIN 2>/dev/null)
 
     if [ "$expected" = "$actual" ]; then
         printf "  ${GREEN}✓${RESET} %s\n" "$desc"
@@ -55,9 +56,9 @@ run_test_exit() {
     local cmd="$2"
     TOTAL=$((TOTAL + 1))
 
-    echo "$cmd" | bash 2>/dev/null
+    printf "%s\n" "$cmd" | bash 2>/dev/null
     local expected_exit=$?
-    echo "$cmd" | $SHELL_BIN 2>/dev/null
+    printf "%s\n" "$cmd" | $SHELL_BIN 2>/dev/null
     local actual_exit=$?
 
     if [ "$expected_exit" = "$actual_exit" ]; then
@@ -83,7 +84,7 @@ run_test_output() {
     TOTAL=$((TOTAL + 1))
 
     local actual
-    actual=$(echo "$cmd" | $SHELL_BIN 2>/dev/null)
+    actual=$(printf "%s\n" "$cmd" | $SHELL_BIN 2>/dev/null)
 
     if [ "$expected" = "$actual" ]; then
         printf "  ${GREEN}✓${RESET} %s\n" "$desc"
@@ -145,7 +146,8 @@ else
     printf "${RED}Failed:${RESET} %d / %d\n" "$FAIL" "$TOTAL"
     printf "\n${RED}Failed tests:${RESET}"
     printf "$FAILED_TESTS\n"
+    exit $FAIL
 fi
 printf "${BOLD}═══════════════════════════════════════${RESET}\n"
 
-exit $FAIL
+exit 0

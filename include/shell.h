@@ -24,12 +24,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-
 /* ---- Project headers ---- */
 #include "ast.h"
 #include "libft.h"
 #include "token.h"
-
 
 /* ---- Constants ---- */
 #define SHELL_NAME "42sh"
@@ -70,6 +68,7 @@ typedef struct s_shell {
   int job_count;
   int exit_code;
   int running;
+  int interactive;
 } t_shell;
 
 /* ---- init.c ---- */
@@ -91,6 +90,7 @@ void setup_signals(void);
 /* ---- utils.c ---- */
 char **ft_realloc_arr(char **arr, int old_count, int new_cap);
 void process_input(const char *line, t_shell *shell);
+char *ft_strtok(char *str, const char *delim);
 
 /* ---- vars/vars.c ---- */
 t_var *var_find(t_var *vars, const char *name);

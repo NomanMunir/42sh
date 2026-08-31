@@ -6,7 +6,10 @@
 section "Single Quotes"
 
 run_test "single quotes literal" "echo 'hello world'"
-run_test "single quotes no expansion" "X=test; echo '\$X'"
+# Single quotes should suppress expansion — must preserve raw $ through pipe
+run_test_output "single quotes no expansion" \
+    "$(printf "X=test\necho '\$X'")" \
+    '$X'
 run_test "single quotes preserve spaces" "echo 'a   b   c'"
 run_test "single empty" "echo ''"
 run_test "concat with single" "echo 'hel''lo'"
@@ -22,7 +25,10 @@ run_test "double with exit code" 'true; echo "exit: $?"'
 section "Backslash Escaping"
 
 run_test "escape space" "echo hello\\ world"
-run_test "escape dollar" 'echo \$HOME'
+# Backslash-dollar: must arrive as literal \$HOME to our shell
+run_test_output "escape dollar" \
+    'echo \$HOME' \
+    '$HOME'
 run_test "escape in double quotes" 'echo "hello\"world"'
 run_test "escape backslash" 'echo "back\\\\slash"'
 
@@ -30,4 +36,8 @@ section "Mixed Quoting"
 
 run_test "single then double" "echo 'single'\"double\""
 run_test "quote in word" "echo he\"ll\"o"
-run_test "var only in double" 'X=yes; echo "$X" '"'"'$X'"'"''
+# In piped mode, the outer bash handles quotes before 42sh sees them
+# This test validates that $X in double quotes expands and in single quotes doesn't
+run_test_output "var only in double" \
+    "$(printf "X=yes\necho \"\$X\" '\$X'")" \
+    'yes $X'

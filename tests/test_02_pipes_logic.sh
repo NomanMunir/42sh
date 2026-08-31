@@ -6,8 +6,8 @@
 section "Pipes"
 
 run_test "simple pipe" "echo hello | cat"
-run_test "pipe to grep" "echo -e 'foo\nbar\nbaz' | grep bar"
-run_test "pipe to wc -l" "echo -e 'a\nb\nc' | wc -l"
+run_test "pipe to grep" "printf 'foo\nbar\nbaz\n' | grep bar"
+run_test "pipe to wc -l" "printf 'a\nb\nc\n' | wc -l"
 run_test "multi pipe" "echo hello world | tr ' ' '\n' | sort"
 run_test "pipe to head" "seq 1 100 | head -5"
 run_test "pipe to tail" "seq 1 10 | tail -3"
