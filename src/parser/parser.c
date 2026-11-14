@@ -1,242 +1,68 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   parser.c                                           :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: 42sh                                       +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*                                                     #+#    #+#             */
-/*                                                    ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-#include "ast.h"
-#include "shell.h"
-
+#include "sh.h"
 
 /*
-** Grammar (recursive descent), lowest precedence first:
-**   list      : and_or ((';' | '&') and_or)* (';' | '&')?
-**   and_or    : pipeline (('&&' | '||') pipeline)*
-**   pipeline  : command ('|' command)*
-**   command   : (assignment)* WORD+ (redirection)*
-**
-** A trailing '&' backgrounds the and_or that precedes it, while the
-** rest of the list keeps running as a sequence.
+** Reports a syntax error at the current token. Running out of tokens is
+** not an error while more input can still be read: the caller is then
+** asked to supply the next line (PARSE_MORE).
 */
+void	p_error(t_parser *p)
+{
+	const char	*text;
 
-static t_node *parse_command(t_token **cur);
-static t_node *parse_pipeline(t_token **cur);
-static t_node *parse_and_or(t_token **cur);
-static t_node *parse_list(t_token **cur);
-
-static int parse_redir(t_token **cur, t_node *cmd) {
-  t_token_type rtype;
-  int fd;
-
-  rtype = (*cur)->type;
-  if ((*cur)->fd >= 0)
-    fd = (*cur)->fd;
-  else if (rtype == TOK_REDIR_IN || rtype == TOK_HEREDOC ||
-           rtype == TOK_REDIR_IN_FD)
-    fd = STDIN_FILENO;
-  else
-    fd = STDOUT_FILENO;
-  *cur = (*cur)->next;
-  if (!*cur || (*cur)->type != TOK_WORD)
-    return (-1);
-  redir_add_back(&cmd->redirs, redir_new(rtype, (*cur)->value, fd));
-  *cur = (*cur)->next;
-  return (0);
+	if (p->status != PARSE_OK)
+		return ;
+	if (p->tok->type == T_EOF && !p->eof_ok)
+	{
+		p->status = PARSE_MORE;
+		return ;
+	}
+	p->status = PARSE_ERR;
+	text = p->tok->str;
+	if (p->tok->type == T_NEWLINE)
+		text = "newline";
+	if (p->tok->type == T_EOF)
+		dprintf(STDERR_FILENO,
+			"42sh: syntax error: unexpected end of file\n");
+	else
+		dprintf(STDERR_FILENO,
+			"42sh: syntax error near unexpected token `%s'\n", text);
 }
 
-static void cmd_argv_add(t_node *cmd, const char *word) {
-  char **new_argv;
-  int i;
-
-  new_argv = ft_calloc(cmd->argc + 2, sizeof(char *));
-  if (!new_argv)
-    return;
-  i = 0;
-  while (i < cmd->argc) {
-    new_argv[i] = cmd->argv[i];
-    i++;
-  }
-  new_argv[i] = ft_strdup(word);
-  free(cmd->argv);
-  cmd->argv = new_argv;
-  cmd->argc++;
+void	p_next(t_parser *p)
+{
+	if (p->tok->type != T_EOF)
+		p->tok = p->tok->next;
 }
 
-static int is_assignment_word(const char *s) {
-  int i;
-
-  if (!s || !ft_isalpha(s[0]))
-    return (0);
-  i = 1;
-  while (s[i] && s[i] != '=') {
-    if (!ft_isalnum(s[i]) && s[i] != '_')
-      return (0);
-    i++;
-  }
-  return (s[i] == '=');
-}
-
-static void cmd_assign_add(t_node *cmd, const char *word) {
-  char **new_assigns;
-  int count;
-  int i;
-
-  count = 0;
-  while (cmd->assigns && cmd->assigns[count])
-    count++;
-  new_assigns = ft_calloc(count + 2, sizeof(char *));
-  if (!new_assigns)
-    return;
-  i = 0;
-  while (i < count) {
-    new_assigns[i] = cmd->assigns[i];
-    i++;
-  }
-  new_assigns[i] = ft_strdup(word);
-  free(cmd->assigns);
-  cmd->assigns = new_assigns;
-}
-
-static t_node *parse_command(t_token **cur) {
-  t_node *cmd;
-
-  cmd = node_new(NODE_CMD);
-  if (!cmd)
-    return (NULL);
-  while (*cur && (*cur)->type != TOK_EOF) {
-    if (is_redir_token((*cur)->type)) {
-      if (parse_redir(cur, cmd) < 0) {
-        ft_putendl_fd("42sh: syntax error near redirection", 2);
-        node_free(cmd);
-        return (NULL);
-      }
-    } else if ((*cur)->type == TOK_WORD) {
-      if (cmd->argc == 0 && is_assignment_word((*cur)->value))
-        cmd_assign_add(cmd, (*cur)->value);
-      else
-        cmd_argv_add(cmd, (*cur)->value);
-      *cur = (*cur)->next;
-    } else
-      break;
-  }
-  if (cmd->argc == 0 && !cmd->redirs && !cmd->assigns) {
-    node_free(cmd);
-    return (NULL);
-  }
-  return (cmd);
-}
-
-static t_node *parse_pipeline(t_token **cur) {
-  t_node *left;
-  t_node *right;
-  t_node *pipe_node;
-
-  left = parse_command(cur);
-  if (!left)
-    return (NULL);
-  while (*cur && (*cur)->type == TOK_PIPE) {
-    *cur = (*cur)->next;
-    right = parse_command(cur);
-    if (!right) {
-      ft_putendl_fd("42sh: syntax error near '|'", 2);
-      node_free(left);
-      return (NULL);
-    }
-    pipe_node = node_new(NODE_PIPE);
-    pipe_node->left = left;
-    pipe_node->right = right;
-    left = pipe_node;
-  }
-  return (left);
-}
-
-static t_node *make_binary(t_node_type type, t_node *left, t_node *right) {
-  t_node *node;
-
-  node = node_new(type);
-  if (!node)
-    return (NULL);
-  node->left = left;
-  node->right = right;
-  return (node);
-}
-
-static t_node *make_bg(t_node *child) {
-  t_node *node;
-
-  node = node_new(NODE_BG);
-  if (!node)
-    return (child);
-  node->left = child;
-  return (node);
-}
-
-static t_node *parse_and_or(t_token **cur) {
-  t_node *left;
-  t_node *right;
-  t_node_type ntype;
-
-  left = parse_pipeline(cur);
-  if (!left)
-    return (NULL);
-  while (*cur && ((*cur)->type == TOK_AND || (*cur)->type == TOK_OR)) {
-    if ((*cur)->type == TOK_AND)
-      ntype = NODE_AND;
-    else
-      ntype = NODE_OR;
-    *cur = (*cur)->next;
-    right = parse_pipeline(cur);
-    if (!right) {
-      ft_putendl_fd("42sh: syntax error near operator", 2);
-      return (node_free(left), NULL);
-    }
-    left = make_binary(ntype, left, right);
-  }
-  return (left);
+void	p_skip_newlines(t_parser *p)
+{
+	while (p->tok->type == T_NEWLINE)
+		p->tok = p->tok->next;
 }
 
 /*
-** parse_list: join and_or units with ';' and '&'. The separator that
-** *follows* a unit decides whether that unit runs in the background,
-** so we peek it before folding the unit into the sequence tree.
+** Parses a complete program text into *out (NULL for an empty text).
+** Returns PARSE_OK, PARSE_MORE or PARSE_ERR.
 */
-static t_node *parse_list(t_token **cur) {
-  t_node *left;
-  t_node *unit;
-  int backgrounded;
+int	parse_text(const char *text, int eof_ok, t_node **out)
+{
+	t_parser	p;
+	t_token	*tokens;
 
-  left = NULL;
-  while (1) {
-    unit = parse_and_or(cur);
-    if (!unit)
-      break;
-    backgrounded = (*cur && (*cur)->type == TOK_AMP);
-    if (backgrounded)
-      unit = make_bg(unit);
-    if (!left)
-      left = unit;
-    else
-      left = make_binary(NODE_SEQ, left, unit);
-    if (!*cur || ((*cur)->type != TOK_SEMI && (*cur)->type != TOK_AMP))
-      break;
-    *cur = (*cur)->next;
-    if (!*cur || (*cur)->type == TOK_EOF)
-      break;
-  }
-  return (left);
-}
-
-t_node *parse(t_token *tokens) {
-  t_token *cur;
-
-  cur = tokens;
-  if (!cur || cur->type == TOK_EOF)
-    return (NULL);
-  return (parse_list(&cur));
+	*out = NULL;
+	ft_bzero(&p, sizeof(p));
+	p.eof_ok = eof_ok;
+	tokens = lex(text, eof_ok, &p.status);
+	p.tok = tokens;
+	if (p.status == PARSE_OK)
+		*out = parse_list(&p);
+	if (p.status == PARSE_OK && p.tok->type != T_EOF)
+		p_error(&p);
+	tok_free_list(tokens);
+	if (p.status != PARSE_OK)
+	{
+		node_free(*out);
+		*out = NULL;
+	}
+	return (p.status);
 }

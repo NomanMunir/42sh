@@ -1,59 +1,83 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   exec_path.c                                        :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: 42sh                                       +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*                                                     #+#    #+#             */
-/*                                                    ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
+#include "sh.h"
 
-#include "shell.h"
-#include <sys/stat.h>
+static int	is_executable(const char *path)
+{
+	struct stat	info;
 
-static char *try_path(const char *dir, const char *cmd) {
-  char *tmp;
-  char *full;
-
-  tmp = ft_strjoin(dir, "/");
-  if (!tmp)
-    return (NULL);
-  full = ft_strjoin(tmp, cmd);
-  free(tmp);
-  return (full);
+	return (stat(path, &info) == 0 && S_ISREG(info.st_mode)
+		&& access(path, X_OK) == 0);
 }
 
-char *resolve_path(const char *cmd, char **env) {
-  char *path_env;
-  char **dirs;
-  char *full;
-  int i;
-  struct stat sb;
+/*
+** Looks for an executable called name in the directories of dirs
+** (colon separated; an empty entry means the current directory).
+*/
+static char	*search_dirs(const char *dirs, const char *name)
+{
+	char	*dir;
+	char	*path;
+	size_t	len;
 
-  if (!cmd || !*cmd)
-    return (NULL);
-  if (ft_strchr(cmd, '/')) {
-    if (stat(cmd, &sb) == 0 && (sb.st_mode & S_IXUSR))
-      return (ft_strdup(cmd));
-    return (NULL);
-  }
-  path_env = env_get(env, "PATH");
-  if (!path_env)
-    return (NULL);
-  dirs = ft_split(path_env, ':');
-  if (!dirs)
-    return (NULL);
-  i = -1;
-  while (dirs[++i]) {
-    full = try_path(dirs[i], cmd);
-    if (full && stat(full, &sb) == 0 && (sb.st_mode & S_IXUSR)) {
-      free_str_arr(dirs);
-      return (full);
-    }
-    free(full);
-  }
-  free_str_arr(dirs);
-  return (NULL);
+	while (1)
+	{
+		len = strcspn(dirs, ":");
+		dir = xstrndup(dirs, len);
+		if (len == 0)
+			path = xjoin("./", name);
+		else
+			path = xjoin3(dir, "/", name);
+		free(dir);
+		if (is_executable(path))
+			return (path);
+		free(path);
+		if (!dirs[len])
+			return (NULL);
+		dirs += len + 1;
+	}
+}
+
+char	*path_search(const char *name)
+{
+	const char	*dirs;
+
+	dirs = var_get("PATH");
+	if (!dirs || !*name)
+		return (NULL);
+	return (search_dirs(dirs, name));
+}
+
+static void	hash_remember(const char *name, const char *path)
+{
+	t_hashent	*entry;
+
+	entry = xcalloc(1, sizeof(t_hashent));
+	entry->path = xstrdup(path);
+	entry->hits = 1;
+	map_set(&sh()->hash, name, entry);
+}
+
+/*
+** Full path of the program to run for name, NULL if there is none. A name
+** containing a slash is used as is; others go through the hash table of
+** already located commands, then through PATH.
+*/
+char	*cmd_resolve(const char *name)
+{
+	t_hashent	*entry;
+	char	*path;
+
+	if (ft_strchr(name, '/'))
+		return (xstrdup(name));
+	entry = map_get(&sh()->hash, name);
+	if (entry && is_executable(entry->path))
+	{
+		entry->hits++;
+		return (xstrdup(entry->path));
+	}
+	path = path_search(name);
+	if (path)
+		hash_remember(name, path);
+	else if (entry)
+		map_del(&sh()->hash, name);
+	return (path);
 }

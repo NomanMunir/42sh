@@ -1,120 +1,84 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   expand.c                                           :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: 42sh                                       +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*                                                     #+#    #+#             */
-/*                                                    ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
+#include "sh.h"
 
-#include "shell.h"
-
-static int get_var_name_len(const char *s) {
-  int i;
-
-  i = 0;
-  while (s[i] && (ft_isalnum(s[i]) || s[i] == '_'))
-    i++;
-  return (i);
+void	exp_init(t_exp *e, int flags)
+{
+	ft_bzero(e, sizeof(*e));
+	e->flags = flags;
 }
 
-static char *append_char(char *str, char c) {
-  char buf[2];
-  char *result;
-
-  buf[0] = c;
-  buf[1] = '\0';
-  result = ft_strjoin(str, buf);
-  free(str);
-  return (result);
-}
-
-static char *append_str(char *str, const char *s) {
-  char *result;
-
-  if (!s)
-    return (str);
-  result = ft_strjoin(str, s);
-  free(str);
-  return (result);
-}
-
-static char *expand_dollar(const char *word, int *i, t_shell *shell) {
-  char *name;
-  char *value;
-  int len;
-
-  (*i)++;
-  if (word[*i] == '{') {
-    (*i)++;
-    if (word[*i] == '?') {
-      (*i)++;
-      if (word[*i] == '}')
-        (*i)++;
-      return (ft_itoa(shell->exit_code));
-    }
-    len = get_var_name_len(word + *i);
-    name = ft_substr(word, *i, len);
-    *i += len;
-    if (word[*i] == '}')
-      (*i)++;
-  } else if (word[*i] == '?') {
-    (*i)++;
-    return (ft_itoa(shell->exit_code));
-  } else {
-    len = get_var_name_len(word + *i);
-    if (len == 0)
-      return (ft_strdup("$"));
-    name = ft_substr(word, *i, len);
-    *i += len;
-  }
-  value = var_get(shell, name);
-  free(name);
-  if (value)
-    return (ft_strdup(value));
-  return (ft_strdup(""));
+void	exp_free(t_exp *e)
+{
+	buf_free(&e->out);
+	buf_free(&e->mask);
 }
 
 /*
-** expand_variables: process the word, expanding $VAR / ${VAR} / $?
-** but skipping any char preceded by \x01 (the quote-protection marker).
-** After processing, all remaining \x01 markers are stripped.
+** Expands one word and splits it into fields appended to out.
+** Returns -1 if the expansion failed.
 */
-char *expand_variables(const char *word, t_shell *shell) {
-  char *result;
-  char *expanded;
-  int i;
+static int	expand_word(const char *raw, t_strv *out)
+{
+	t_exp	e;
 
-  result = ft_strdup("");
-  i = 0;
-  while (word[i]) {
-    if (word[i] == '\x01' && word[i + 1]) {
-      i++;
-      result = append_char(result, word[i++]);
-    } else if (word[i] == '$' && word[i + 1]) {
-      expanded = expand_dollar(word, &i, shell);
-      result = append_str(result, expanded);
-      free(expanded);
-    } else
-      result = append_char(result, word[i++]);
-  }
-  return (result);
+	exp_init(&e, EXP_TILDE | EXP_PROCSUB);
+	exp_run(&e, raw);
+	if (!e.err)
+		fields_split(&e, out);
+	exp_free(&e);
+	return (-e.err);
 }
 
-void expand_argv(t_node *node, t_shell *shell) {
-  int i;
-  char *expanded;
+/*
+** Full expansion of command words: tilde, parameters, command and
+** arithmetic substitution, field splitting, globbing and quote removal.
+** Returns a new argv, or NULL after an expansion error.
+*/
+char	**expand_words(char **raw)
+{
+	t_strv	out;
+	int	i;
 
-  if (!node || !node->argv)
-    return;
-  i = 0;
-  while (node->argv[i]) {
-    expanded = expand_variables(node->argv[i], shell);
-    free(node->argv[i]);
-    node->argv[i] = expanded;
-    i++;
-  }
+	strv_init(&out);
+	i = 0;
+	while (raw && raw[i])
+	{
+		if (expand_word(raw[i], &out) < 0)
+		{
+			strv_free(&out);
+			return (NULL);
+		}
+		i++;
+	}
+	return (strv_take(&out));
+}
+
+/*
+** Expansion to exactly one string, without field splitting or globbing
+** (assignments, redirection targets, here-documents, case words...).
+** With EXP_PATTERN the quoted pattern characters come back escaped.
+*/
+char	*expand_single(const char *raw, int flags)
+{
+	t_exp	e;
+	t_buf	res;
+	size_t	i;
+
+	exp_init(&e, flags);
+	exp_run(&e, raw);
+	buf_init(&res);
+	i = 0;
+	while (i < e.out.len && !e.err)
+	{
+		if ((flags & EXP_PATTERN) && e.mask.s[i] == M_QUOTED
+			&& ft_strchr("*?[]\\", e.out.s[i]))
+			buf_addc(&res, '\\');
+		if (e.mask.s[i] != M_MARK)
+			buf_addc(&res, e.out.s[i]);
+		i++;
+	}
+	exp_free(&e);
+	if (!e.err)
+		return (buf_take(&res));
+	buf_free(&res);
+	return (NULL);
 }
