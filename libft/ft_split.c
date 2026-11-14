@@ -54,19 +54,16 @@ char	**ft_split(const char *s, char c)
 	i = 0;
 	while (*s)
 	{
-		if (*s != c)
-		{
-			len = 0;
-			while (s[len] && s[len] != c)
-				len++;
-			arr[i] = ft_substr(s, 0, len);
-			if (!arr[i])
-				return (free_split(arr, i), NULL);
-			i++;
-			s += len;
-		}
-		else
+		while (*s == c)
 			s++;
+		len = 0;
+		while (s[len] && s[len] != c)
+			len++;
+		if (len > 0)
+			arr[i] = ft_substr(s, 0, len);
+		if (len > 0 && !arr[i++])
+			return (free_split(arr, i - 1), NULL);
+		s += len;
 	}
 	arr[i] = NULL;
 	return (arr);

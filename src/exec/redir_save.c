@@ -1,5 +1,13 @@
 #include "sh.h"
 
+void	move_fd(int from, int to)
+{
+	if (from < 0 || from == to)
+		return ;
+	dup2(from, to);
+	close(from);
+}
+
 /*
 ** Remembers what fd currently refers to (a private copy above 10, or -1
 ** if it is closed) before a redirection replaces it.

@@ -99,6 +99,34 @@ run_test_output() {
 }
 
 # --------------------------------------------------------------------------
+# run_test_alive "description" "command_to_test"
+#   Stability check: 42sh may answer whatever it wants, but it must end by
+#   itself. Being killed by a signal (segmentation fault, abort, bus error,
+#   floating point exception...) or hanging is a failure.
+# --------------------------------------------------------------------------
+run_test_alive() {
+    local desc="$1"
+    local cmd="$2"
+    TOTAL=$((TOTAL + 1))
+
+    printf "%s\n" "$cmd" | timeout 30 $SHELL_BIN >/dev/null 2>&1
+    local code=$?
+
+    case $code in
+        124|132|134|135|136|137|139)
+            printf "  ${RED}✗${RESET} %s\n" "$desc"
+            printf "    ${YELLOW}42sh died or hung, status:${RESET} %d\n" "$code"
+            FAIL=$((FAIL + 1))
+            FAILED_TESTS="$FAILED_TESTS\n    - $desc"
+            ;;
+        *)
+            printf "  ${GREEN}✓${RESET} %s (status: %d)\n" "$desc" "$code"
+            PASS=$((PASS + 1))
+            ;;
+    esac
+}
+
+# --------------------------------------------------------------------------
 # section "Title"
 # --------------------------------------------------------------------------
 section() {

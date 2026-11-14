@@ -77,7 +77,11 @@ int	exec_cmd(t_node *n, int flags)
 	if (!argv)
 		status = 1;
 	else if (sh()->interactive && sig_peek() == SIGINT)
+	{
+		sh()->unwind = U_INT;
+		sh()->status = 130;
 		status = 130;
+	}
 	else if (!argv[0])
 		status = exec_assignments(n);
 	else

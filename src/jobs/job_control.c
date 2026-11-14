@@ -17,7 +17,9 @@ void	jobctl_init(void)
 	foreground = tcgetpgrp(s->tty);
 	while (foreground >= 0 && foreground != getpgrp())
 	{
+		signal(SIGTTIN, SIG_DFL);
 		kill(-getpgrp(), SIGTTIN);
+		signal(SIGTTIN, SIG_IGN);
 		foreground = tcgetpgrp(s->tty);
 	}
 	if (s->tty < 0 || foreground < 0)

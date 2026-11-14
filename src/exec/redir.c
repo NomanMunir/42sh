@@ -33,6 +33,15 @@ static int	redir_target_fd(t_redir *r)
 	return (STDIN_FILENO);
 }
 
+static int	redir_dup(int source, int target)
+{
+	if (dup2(source, target) >= 0)
+		return (0);
+	dprintf(STDERR_FILENO, "42sh: %d: %s\n", target, strerror(errno));
+	close(source);
+	return (-1);
+}
+
 static int	redir_one(t_redir *r, t_fdsave **save)
 {
 	int	target;
@@ -48,12 +57,8 @@ static int	redir_one(t_redir *r, t_fdsave **save)
 		close(target);
 		return (0);
 	}
-	if (dup2(source, target) < 0)
-	{
-		dprintf(STDERR_FILENO, "42sh: %d: %s\n", target, strerror(errno));
-		close(source);
+	if (redir_dup(source, target) < 0)
 		return (-1);
-	}
 	if (redir_is_both(r))
 	{
 		fd_save(save, STDERR_FILENO);

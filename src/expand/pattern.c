@@ -99,20 +99,17 @@ int	pat_match(const char *pat, const char *str)
 			star_str = str;
 			continue ;
 		}
-		len = match_one(pat, *str);
+		len = match_one(pat, *str++);
 		if (len == 0 && !star_pat)
 			return (0);
 		if (len == 0)
+		{
 			pat = star_pat;
-		if (len == 0)
 			str = ++star_str;
-		else
-			str++;
+		}
 		pat += len;
 	}
-	while (*pat == '*')
-		pat++;
-	return (!*pat);
+	return (pat[strspn(pat, "*")] == '\0');
 }
 
 /*

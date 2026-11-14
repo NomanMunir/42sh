@@ -34,11 +34,18 @@ static void	exec_failed(char *path, char **argv)
 */
 static void	child_exec(t_node *n, char **argv, char *path)
 {
+	char	**env;
+	int	error;
+
 	if (redir_apply(n->redirs, NULL) < 0)
 		exit(1);
 	if (assign_all(n->assigns, V_EXPORT) < 0)
 		exit(1);
-	execve(path, argv, vars_envp());
+	env = vars_envp();
+	execve(path, argv, env);
+	error = errno;
+	free_strs(env);
+	errno = error;
 	exec_failed(path, argv);
 }
 

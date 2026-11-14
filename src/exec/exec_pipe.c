@@ -1,13 +1,5 @@
 #include "sh.h"
 
-void	move_fd(int from, int to)
-{
-	if (from < 0 || from == to)
-		return ;
-	dup2(from, to);
-	close(from);
-}
-
 /*
 ** Pipelines are parsed as a left-leaning tree; this lists their commands
 ** from left to right (NULL-terminated array).
@@ -37,6 +29,19 @@ static t_node	**pipe_flatten(t_node *n)
 }
 
 /*
+** A member of the pipeline, in its own process: connects its ends of
+** the pipes and runs the command.
+*/
+static void	pipe_child(t_node *cmd, int input, int *fds)
+{
+	move_fd(input, STDIN_FILENO);
+	move_fd(fds[1], STDOUT_FILENO);
+	if (fds[0] >= 0)
+		close(fds[0]);
+	exit(exec_node(cmd, X_EXIT));
+}
+
+/*
 ** Forks one member of the pipeline. input is the read end left by the
 ** previous member (-1 for the first). Returns the read end for the next
 ** member, -1 after the last one, -2 on failure.
@@ -53,13 +58,7 @@ static int	pipe_stage(t_job *job, t_node **cmd, int input, int bg)
 	else
 		pid = job_fork(job, bg);
 	if (pid == 0)
-	{
-		move_fd(input, STDIN_FILENO);
-		move_fd(fds[1], STDOUT_FILENO);
-		if (fds[0] >= 0)
-			close(fds[0]);
-		exit(exec_node(cmd[0], X_EXIT));
-	}
+		pipe_child(cmd[0], input, fds);
 	if (input >= 0)
 		close(input);
 	if (fds[1] >= 0)

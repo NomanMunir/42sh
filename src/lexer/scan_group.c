@@ -34,7 +34,8 @@ int	scan_group(const char *s)
 		closer = '}';
 	depth = 1;
 	i = 1;
-	while (s[i] && depth > 0)
+	len = 1;
+	while (s[i] && depth > 0 && len > 0)
 	{
 		len = 1;
 		if (s[i] == '(' && s[0] == '(')
@@ -43,11 +44,9 @@ int	scan_group(const char *s)
 			depth--;
 		else
 			len = scan_unit(s + i);
-		if (len < 0)
-			return (-1);
 		i += len;
 	}
-	if (depth > 0)
+	if (depth > 0 || len < 0)
 		return (-1);
 	return (i);
 }

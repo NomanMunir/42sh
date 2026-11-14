@@ -9,6 +9,7 @@
 # include <fcntl.h>
 # include <signal.h>
 # include <limits.h>
+# include <locale.h>
 # include <dirent.h>
 # include <termios.h>
 # include <pwd.h>
@@ -50,12 +51,14 @@ typedef struct s_hashent
 /*
 ** One source of commands: the terminal (readline), a file descriptor read
 ** byte by byte, or a string held in memory (-c, scripts, eval, $(...)).
+** ran is set once a command of the input was run (or was refused).
 */
 typedef struct s_input
 {
 	int	kind;
 	int	fd;
 	const char	*str;
+	int	ran;
 }	t_input;
 
 typedef struct s_shell
